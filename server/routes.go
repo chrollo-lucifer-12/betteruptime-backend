@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"github.com/chrollo-lucifer-12/betteruptime/db"

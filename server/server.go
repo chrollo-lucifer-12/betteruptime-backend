@@ -1,6 +1,8 @@
-package main
+package server
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -20,11 +22,16 @@ type Server struct {
 
 func NewServer(opts ServerOpts) *Server {
 	r := gin.Default()
+
 	return &Server{
 		r:    r,
 		port: opts.Port,
 		db:   opts.DB,
 	}
+}
+
+func (s *Server) ServerHttp(w http.ResponseWriter, req *http.Request) {
+	s.r.ServeHTTP(w, req)
 }
 
 func (s *Server) Start() error {
