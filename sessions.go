@@ -3,40 +3,43 @@ package main
 import (
 	"crypto/subtle"
 	"encoding/hex"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/chrollo-lucifer-12/betteruptime/db"
+	"github.com/google/uuid"
 )
 
 const inactivityTimeoutSeconds = 60 * 60 * 24 * 10
 const activityCheckIntervalSeconds = 60 * 60
 
 type SessionWithToken struct {
-	Id         string
+	SessionId  string
 	SecretHash string
 	CreatedAt  time.Time
 	Token      string
 }
 
 func (s *Server) createSession(user_id uint) *SessionWithToken {
-	id, _ := GenerateSecureRandomString()
+	id := uuid.New().String()
 	secret, _ := GenerateSecureRandomString()
 	secretHash := HashSecret(secret)
 	secretHashHex := hex.EncodeToString(secretHash)
 
 	token := id + "." + secret
 	session := SessionWithToken{
-		Id:         id,
+		SessionId:  id,
 		SecretHash: secretHashHex,
 		Token:      token,
 		CreatedAt:  time.Now(),
 	}
 
+	sessionId_uuid, _ := uuid.Parse(session.SessionId)
+
 	newSession := &db.Session{
 		UserID:     user_id,
 		SecretHash: secretHashHex,
+		SessionID:  sessionId_uuid,
 	}
 
 	if err := s.db.Create(newSession).Error; err != nil {
@@ -54,8 +57,8 @@ func (s *Server) validateSession(token string) *db.Session {
 	}
 	sessionId := tokenParts[0]
 	sessionSecret := tokenParts[1]
-	sessionIdUint, _ := strconv.ParseUint(sessionId, 10, 64)
-	session := s.getSession(uint(sessionIdUint))
+	sessionId_uuid, _ := uuid.Parse(sessionId)
+	session := s.getSession(sessionId_uuid)
 	if session == nil {
 		return nil
 	}
@@ -74,18 +77,18 @@ func (s *Server) validateSession(token string) *db.Session {
 	return session
 }
 
-func (s *Server) getSession(sessionId uint) *db.Session {
+func (s *Server) getSession(sessionId uuid.UUID) *db.Session {
 	session := &db.Session{}
-	if err := s.db.Where("id = ?", sessionId).Model(session).Error; err != nil {
+	if err := s.db.Where("session_id = ?", sessionId).First(session).Error; err != nil {
 		return nil
 	}
-	if time.Since(session.UpdatedAt) >= inactivityTimeoutSeconds*1000 {
+	if time.Since(session.UpdatedAt) >= time.Duration(inactivityTimeoutSeconds)*time.Second {
 		s.deleteSession(sessionId)
 		return nil
 	}
 	return session
 }
 
-func (s *Server) deleteSession(sessionId uint) {
-	s.db.Where("id = ?", sessionId).Delete(&db.Session{})
+func (s *Server) deleteSession(sessionId uuid.UUID) {
+	s.db.Where("session_id = ?", sessionId).Delete(&db.Session{})
 }

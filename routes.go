@@ -23,7 +23,7 @@ func (s *Server) RegisterRoutes(r *gin.Engine) {
 func (s *Server) RegisterWebsiteRoutes(r *gin.RouterGroup) {
 	r.POST("/signup", s.addUser)
 	r.POST("/login", s.loginUser)
-	r.POST("/website", s.addWebsiteHandler)
+	r.POST("/website", s.userMiddleware, s.addWebsiteHandler)
 	r.GET("/status/:websiteId", func(c *gin.Context) {
 		//	userId := c.Param("websiteId")
 
@@ -78,10 +78,19 @@ func (s *Server) loginUser(c *gin.Context) {
 	}
 
 	newSession := s.createSession(user.ID)
+	if newSession == nil {
+		c.JSON(500, gin.H{"message": "internal server error"})
+	}
 	c.JSON(201, gin.H{"token": newSession.Token})
 }
 
 func (s *Server) addWebsiteHandler(c *gin.Context) {
+	user_id, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(411, gin.H{"message": "no user id"})
+		return
+	}
+	user_idUint := user_id.(uint)
 	r := AddWebsiteRequest{}
 	if err := c.ShouldBindJSON(&r); err != nil {
 		c.JSON(411, gin.H{"message": err.Error()})
@@ -89,7 +98,7 @@ func (s *Server) addWebsiteHandler(c *gin.Context) {
 	}
 	newWebsite := db.Website{
 		Url:    r.Url,
-		UserID: 1,
+		UserID: uint(user_idUint),
 	}
 	if err := s.db.Create(&newWebsite).Error; err != nil {
 		c.JSON(500, gin.H{"message": err.Error})

@@ -35,7 +35,7 @@ func NewGorm() (*Gorm, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = db.AutoMigrate(&User{}, &Region{}, &Website{}, &WebsiteTick{})
+	err = db.AutoMigrate(&Session{}, &User{}, &Region{}, &Website{}, &WebsiteTick{})
 	if err != nil {
 		return nil, err
 	}

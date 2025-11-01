@@ -1,6 +1,7 @@
 package db
 
 import (
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -9,13 +10,14 @@ type User struct {
 	Username string    `gorm:"uniqueIndex;not null"`
 	Password string    `gorm:"not null"`
 	Websites []Website `gorm:"constraint:OnDelete:CASCADE;"`
-	Session  []Session
+	Session  Session   `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 type Session struct {
 	gorm.Model
+	SessionID  uuid.UUID `gorm:"uniqueIndex"`
 	SecretHash string
-	UserID     uint
+	UserID     uint `gorm:"uniqueIndex"`
 }
 
 type Website struct {
