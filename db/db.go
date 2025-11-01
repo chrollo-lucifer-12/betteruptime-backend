@@ -1,10 +1,14 @@
 package db
 
 import (
+	"log"
 	"os"
+	"time"
 
+	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Gorm struct {
@@ -12,12 +16,26 @@ type Gorm struct {
 }
 
 func NewGorm() (*Gorm, error) {
-	dsn := os.Getenv("DATABASE_URL")
-	db, err := gorm.Open(postgres.Open(dsn))
+	err := godotenv.Load()
 	if err != nil {
 		return nil, err
 	}
-	err = db.AutoMigrate()
+	dsn := os.Getenv("DATABASE_URL")
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.New(
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
+			logger.Config{
+				SlowThreshold: time.Second,
+				LogLevel:      logger.Info,
+				Colorful:      true,
+			},
+		),
+	})
+	if err != nil {
+		return nil, err
+	}
+	err = db.AutoMigrate(&User{}, &Region{}, &Website{}, &WebsiteTick{})
 	if err != nil {
 		return nil, err
 	}

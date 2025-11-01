@@ -2,12 +2,12 @@ package main
 
 import "github.com/gin-gonic/gin"
 
-func RegisterRoutes(r *gin.Engine) {
+func (s *Server) RegisterRoutes(r *gin.Engine) {
 	api := r.Group("api/v1")
-	RegisterWebsiteRoutes(api)
+	s.RegisterWebsiteRoutes(api)
 }
 
-func RegisterWebsiteRoutes(r *gin.RouterGroup) {
+func (s *Server) RegisterWebsiteRoutes(r *gin.RouterGroup) {
 	r.POST("/website", func(c *gin.Context) {
 
 	})

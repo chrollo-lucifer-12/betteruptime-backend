@@ -31,7 +31,7 @@ func (s *Server) Start() error {
 	if len(s.port) == 0 {
 		s.port = defaultPort
 	}
-	RegisterRoutes(s.r)
+	s.RegisterRoutes(s.r)
 	err := s.r.Run(s.port)
 	if err != nil {
 		return err
