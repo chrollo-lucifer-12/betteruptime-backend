@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/chrollo-lucifer-12/betteruptime/db"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AddWebsiteRequest struct {
@@ -20,7 +21,8 @@ func (s *Server) RegisterRoutes(r *gin.Engine) {
 }
 
 func (s *Server) RegisterWebsiteRoutes(r *gin.RouterGroup) {
-	r.POST("/user", s.addUser)
+	r.POST("/signup", s.addUser)
+	r.POST("/login", s.loginUser)
 	r.POST("/website", s.addWebsiteHandler)
 	r.GET("/status/:websiteId", func(c *gin.Context) {
 		//	userId := c.Param("websiteId")
@@ -29,25 +31,59 @@ func (s *Server) RegisterWebsiteRoutes(r *gin.RouterGroup) {
 }
 
 func (s *Server) addUser(c *gin.Context) {
-	r := AddUserRequest{}
-	if err := c.ShouldBindBodyWithJSON(&r); err != nil {
-		c.JSON(411, gin.H{"message": err.Error()})
+	var r AddUserRequest
+	if err := c.ShouldBindJSON(&r); err != nil {
+		c.JSON(400, gin.H{"message": err.Error()})
+		return
+	}
+	var existingUser db.User
+	if err := s.db.Where("username = ?", r.Username).First(&existingUser).Error; err == nil {
+		c.JSON(409, gin.H{"message": "username already taken"})
+		return
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(r.Password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(500, gin.H{"message": "failed to hash password"})
 		return
 	}
 	newUser := db.User{
 		Username: r.Username,
-		Password: r.Password,
+		Password: string(hashedPassword),
 	}
+
 	if err := s.db.Create(&newUser).Error; err != nil {
-		c.JSON(500, gin.H{"message": err.Error})
+		c.JSON(500, gin.H{"message": err.Error()})
 		return
 	}
+
 	c.JSON(201, gin.H{"id": newUser.ID})
+}
+
+func (s *Server) loginUser(c *gin.Context) {
+	var r AddUserRequest
+	if err := c.ShouldBindJSON(&r); err != nil {
+		c.JSON(400, gin.H{"message": err.Error()})
+		return
+	}
+
+	var user db.User
+	if err := s.db.Where("username = ?", r.Username).First(&user).Error; err != nil {
+		c.JSON(401, gin.H{"message": "invalid username or password"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(r.Password)); err != nil {
+		c.JSON(401, gin.H{"message": "invalid username or password"})
+		return
+	}
+
+	newSession := s.createSession(user.ID)
+	c.JSON(201, gin.H{"token": newSession.Token})
 }
 
 func (s *Server) addWebsiteHandler(c *gin.Context) {
 	r := AddWebsiteRequest{}
-	if err := c.ShouldBindBodyWithJSON(&r); err != nil {
+	if err := c.ShouldBindJSON(&r); err != nil {
 		c.JSON(411, gin.H{"message": err.Error()})
 		return
 	}

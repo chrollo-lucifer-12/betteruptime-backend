@@ -9,6 +9,13 @@ type User struct {
 	Username string    `gorm:"uniqueIndex;not null"`
 	Password string    `gorm:"not null"`
 	Websites []Website `gorm:"constraint:OnDelete:CASCADE;"`
+	Session  []Session
+}
+
+type Session struct {
+	gorm.Model
+	SecretHash string
+	UserID     uint
 }
 
 type Website struct {
